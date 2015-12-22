@@ -1,0 +1,3 @@
+#! /bin/bash
+echo "Building project to 'ewa'"
+docker run --rm -it -v "$PWD":/usr/src/myapp  -w /usr/src/myapp ewa go build -o ewa main.go
