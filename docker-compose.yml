@@ -1,0 +1,7 @@
+ewa:
+  image: ewa
+  stdin_open: true
+  tty: true
+  volumes:
+    - .:/work/ewa
+  command: bash
