@@ -2,6 +2,7 @@ package commands
 
 import (
   "github.com/spf13/cobra"
+  "github.com/spf13/viper"
   "strings"
   "os"
   "bytes"
@@ -30,7 +31,7 @@ var noteCmd = &cobra.Command{
 }
 
 func writeNote(note string) {
-  filename := "notes.dat"
+  filename := viper.GetString("notesFile")
 
   var buf bytes.Buffer
 

@@ -2,12 +2,11 @@ package commands
 
 import (
   "github.com/spf13/cobra"
+  "github.com/spf13/viper"
   "os"
   "fmt"
   "encoding/gob"
   "time"
-
-
 )
 
 func init() {
@@ -23,7 +22,7 @@ var searchCmd = &cobra.Command{
   Short: "find a note, given an offset",
   Long: "find a note, given an offset",
   Run:  func(cmd *cobra.Command, args []string) {
-    filename := "notes.dat"
+    filename := viper.GetString("notesFile")
 
     f, err := os.OpenFile(filename, os.O_RDONLY, 0666)
     CheckErr(err, "OpenFile error:")
