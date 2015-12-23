@@ -1,4 +1,12 @@
-FROM golang:1.4-onbuild
+FROM golang
 
-CMD go get -v github.com/spf13/cobra/cobra
+ADD . /go/src/ewa
+
+RUN go get -v github.com/spf13/cobra/cobra
+RUN go get -v github.com/spf13/viper
+
+RUN go install ewa
+
+#ENTRYPOINT /go/bin/ewa
+
 

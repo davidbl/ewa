@@ -3,7 +3,7 @@ package main
 import (
   "fmt"
   "os"
-  "./commands"
+  "ewa/commands"
 )
 
 func main() {
