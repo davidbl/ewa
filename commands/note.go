@@ -2,13 +2,13 @@ package commands
 
 import (
   "github.com/spf13/cobra"
-  "github.com/spf13/viper"
+  "github.com/boltdb/bolt"
   "strings"
-  "os"
   "bytes"
-  "fmt"
   "encoding/gob"
+  "encoding/binary"
   "time"
+  "fmt"
 )
 
 func init() {
@@ -16,10 +16,16 @@ func init() {
 }
 
 type Note struct {
+  Id  uint64
   Note string
   Timestamp time.Time
 }
 
+func itob(v uint64) []byte {
+  b := make([]byte, 8)
+  binary.BigEndian.PutUint64(b, v)
+  return b
+}
 
 var noteCmd = &cobra.Command{
   Use: "note",
@@ -31,25 +37,29 @@ var noteCmd = &cobra.Command{
 }
 
 func writeNote(note string) {
-  filename := viper.GetString("notesFile")
+  db, err := bolt.Open(DataPath(), 0600, nil)
+  CheckErr(err, "db file open err")
+
+  defer db.Close()
 
   var buf bytes.Buffer
 
   enc := gob.NewEncoder(&buf)
-  f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
-  CheckErr(err, "OpenFile  error:")
 
-  defer f.Close()
-
-  // find current offset to end of file
-  curr,err := f.Seek(0,2)
-  CheckErr(err, "fileSeek  error:")
-
-  err = enc.Encode(Note{note, time.Now().UTC()})
-  CheckErr(err, "encode error:")
-
-  _, err = f.WriteAt(buf.Bytes(),curr)
-  CheckErr(err, "file.WriteAt error:")
-
-  fmt.Printf("%q (written at %d)", note, curr)
+  err = db.Update(func(tx *bolt.Tx) error {
+    bucket, err := tx.CreateBucketIfNotExists([]byte("notes"))
+    if err != nil {
+      return err
+    }
+    id, _ := bucket.NextSequence()
+    note := Note{id, note, time.Now().UTC()}
+    err = enc.Encode(note)
+    CheckErr(err, "encode error:")
+    err = bucket.Put(itob(id), buf.Bytes())
+    if err != nil {
+      return err
+    }
+    fmt.Println(note)
+    return nil
+  })
 }

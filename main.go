@@ -6,6 +6,7 @@ import (
   "ewa/commands"
 )
 
+
 func main() {
   if err := commands.EwaCmd.Execute(); err != nil {
     fmt.Println(err)

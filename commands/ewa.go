@@ -2,8 +2,20 @@ package commands
 
 import (
   "github.com/spf13/cobra"
-  "github.com/spf13/viper"
+  "os"
+  "os/user"
+  "fmt"
+  "path"
 )
+
+var (
+  config Config
+)
+
+type Config struct {
+  DataDir string
+  DataFile string
+}
 
 var EwaCmd = &cobra.Command{
   Use:   "ewa",
@@ -11,22 +23,31 @@ var EwaCmd = &cobra.Command{
   Long: `ewa is the main command, used to save all the stuff you do
 during the day at the command-line`,
   PersistentPreRun: func(cmd *cobra.Command, args []string) {
-    viper.SetConfigType("yaml")
-    viper.SetConfigName(".ewa.config")
-    viper.AddConfigPath("$HOME")
-    err := viper.ReadInConfig()
-    CheckErr(err, "config read error:")
+    setConfig()
   },
 
 }
 
+func DataPath() string {
+  return path.Join(config.DataDir, config.DataFile)
+}
 
-// TODO
-// add config file using viper default to ~/.ewa.config
-// allow for 
-//   - note file (default to ~/.ewa/notes.dat)
-
-//  add an init method that creates the default config
-//  and default dirs and files
-
-// check for config values in PersisitentPreRun 
+func setConfig() {
+  config.DataFile = "ewa.db"
+  if os.Getenv("EWA_DATADIR") != "" {
+    config.DataDir = os.Getenv("EWA_DATADIR")
+  } else {
+    usr, err := user.Current()
+    CheckErr(err, "unable to get current user")
+    fmt.Println("home dir:", usr.HomeDir)
+    config.DataDir = usr.HomeDir
+  }
+  _, err := os.Stat(config.DataDir)
+  if os.IsNotExist(err) {
+    fmt.Println("Creating missing data directory", config.DataDir)
+    err = os.MkdirAll(config.DataDir, 0755)
+  }
+  if err != nil {
+    panic(fmt.Sprintf("%s", err))
+  }
+}
