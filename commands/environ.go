@@ -17,7 +17,8 @@ var environCmd = &cobra.Command{
     fmt.Println( `EWA_LOGDESTINATION - controls where logs are written
   allowable values are NONE, STDOUT, FILE, BOTH. Defaults to FILE
 EWA_DATADIR - sets the directory Ewa uses to store data. Defaults to home dir of current user
-EWA_LOGLOCATION - sets the directory Ewa uses to store logs. Defaults to EWA_DATADIR`)
+EWA_LOGLOCATION - sets the file Ewa uses to store logs. Defaults to 'ewa.log'
+  (log file will always be stored in EWA_DATADIR)`)
   },
 }
 
