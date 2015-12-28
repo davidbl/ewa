@@ -43,16 +43,15 @@ var tagBucketName = []byte("tags")
 var noteBucketName = []byte("notes")
 
 
-func writeNote(note string) {
+func writeNote(noteBody string) {
   db, err := bolt.Open(DataPath(), 0600, nil)
-  CheckErr(err, "db file open err")
+  CheckErrFatal(err, "db file open err")
 
   defer db.Close()
 
   var buf bytes.Buffer
 
   enc := gob.NewEncoder(&buf)
-  fmt.Println("tags:", tags)
 
   err = db.Update(func(tx *bolt.Tx) error {
     bucket, err := tx.CreateBucketIfNotExists(noteBucketName)
@@ -61,15 +60,15 @@ func writeNote(note string) {
     }
     id, _ := bucket.NextSequence()
 
-    note := Note{id, note, time.Now().UTC()}
+    note := Note{id, noteBody, time.Now().UTC()}
     err = enc.Encode(note)
-    CheckErr(err, "encode error:")
+    CheckErrFatal(err, "encode error:")
 
     err = bucket.Put(itob(id), buf.Bytes())
     if err != nil {
       return err
     }
-    fmt.Println(note)
+    config.Log.Println("saving note:", note)
 
     // save the tags, if any
     tagBucket, err := tx.CreateBucketIfNotExists(tagBucketName)
@@ -88,12 +87,14 @@ func writeNote(note string) {
         if err != nil {
           return err
         }
+        config.Log.Println("updating tag", tag)
       } else {
         idVal := fmt.Sprintf("%d",id)
         err = tagBucket.Put([]byte(tag), []byte(idVal))
         if err != nil {
           return err
         }
+        config.Log.Println("saving tag", tag)
       }
     }
     return nil

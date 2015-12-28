@@ -1,8 +1,12 @@
 package commands
-import "fmt"
 
 func CheckErr(err error, msg string) {
   if err != nil {
-    panic(fmt.Sprintf("%s: %v", msg, err))
+    config.Log.Printf("%s: %v\n", msg, err)
+  }
+}
+func CheckErrFatal(err error, msg string) {
+  if err != nil {
+    config.Log.Fatalf("%s: %v\n", msg, err)
   }
 }
