@@ -8,7 +8,6 @@ import (
   "encoding/gob"
   "encoding/binary"
   "time"
-  "fmt"
 )
 
 var tags string
@@ -22,6 +21,11 @@ type Note struct {
   Id  uint64
   Note string
   Timestamp time.Time
+}
+
+type Tag struct {
+  TagText string
+  NoteIds []uint64
 }
 
 func itob(v uint64) []byte {
@@ -49,9 +53,8 @@ func writeNote(noteBody string) {
 
   defer db.Close()
 
-  var buf bytes.Buffer
-
-  enc := gob.NewEncoder(&buf)
+  var noteBuf bytes.Buffer
+  noteEnc := gob.NewEncoder(&noteBuf)
 
   err = db.Update(func(tx *bolt.Tx) error {
     bucket, err := tx.CreateBucketIfNotExists(noteBucketName)
@@ -61,10 +64,10 @@ func writeNote(noteBody string) {
     id, _ := bucket.NextSequence()
 
     note := Note{id, noteBody, time.Now().UTC()}
-    err = enc.Encode(note)
-    CheckErrFatal(err, "encode error:")
+    err = noteEnc.Encode(note)
+    CheckErrFatal(err, "note encode error:")
 
-    err = bucket.Put(itob(id), buf.Bytes())
+    err = bucket.Put(itob(id), noteBuf.Bytes())
     if err != nil {
       return err
     }
@@ -75,22 +78,31 @@ func writeNote(noteBody string) {
     if err != nil {
       return err
     }
+
     tagStrings := strings.Split(tags,",")
     for _, tag := range tagStrings {
       exTagVal := tagBucket.Get([]byte(tag))
       if exTagVal != nil {
-        appendand := fmt.Sprintf(",%d",id)
-        newVal := make([]byte, len(exTagVal))
-        copy(newVal,exTagVal)
-        newVal = append(newVal, appendand...)
-        err = tagBucket.Put([]byte(tag),newVal)
+        exTagBuf := bytes.NewBuffer(exTagVal)
+        tagDec := gob.NewDecoder(exTagBuf)
+        var exTag Tag
+        err = tagDec.Decode(&exTag)
+        exTag.NoteIds = append(exTag.NoteIds, id)
+        var tagBuf bytes.Buffer
+        tagEnc := gob.NewEncoder(&tagBuf)
+        err = tagEnc.Encode(exTag)
+        err = tagBucket.Put([]byte(tag),tagBuf.Bytes())
         if err != nil {
           return err
         }
-        config.Log.Println("updating tag", tag)
+        config.Log.Println("updated tag", exTag)
       } else {
-        idVal := fmt.Sprintf("%d",id)
-        err = tagBucket.Put([]byte(tag), []byte(idVal))
+        var tagBuf bytes.Buffer
+        tagEnc := gob.NewEncoder(&tagBuf)
+        t := Tag{tag,[]uint64{id}}
+        err = tagEnc.Encode(t)
+        CheckErrFatal(err, "tag encode error:")
+        err = tagBucket.Put([]byte(tag), tagBuf.Bytes())
         if err != nil {
           return err
         }
