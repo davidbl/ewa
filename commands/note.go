@@ -4,8 +4,6 @@ import (
   "github.com/spf13/cobra"
   "github.com/boltdb/bolt"
   "strings"
-  "bytes"
-  "encoding/gob"
   "time"
 )
 
@@ -42,24 +40,8 @@ func writeNote(noteBody string) {
 
   defer db.Close()
 
-  var noteBuf bytes.Buffer
-  noteEnc := gob.NewEncoder(&noteBuf)
-
   err = db.Update(func(tx *bolt.Tx) error {
-    bucket, err := tx.CreateBucketIfNotExists(config.NoteBucketName)
-    if err != nil {
-      return err
-    }
-    id, _ := bucket.NextSequence()
-
-    note := Note{id, noteBody, time.Now().UTC()}
-    err = noteEnc.Encode(note)
-    CheckErrFatal(err, "note encode error:")
-
-    err = bucket.Put(Itob(id), noteBuf.Bytes())
-    if err != nil {
-      return err
-    }
+    note := NoteSave(noteBody, tx)
     config.Log.Println("saving note:", note)
 
     // save the tags, if any
@@ -72,29 +54,11 @@ func writeNote(noteBody string) {
     for _, tag := range tagStrings {
       exTagVal := tagBucket.Get([]byte(tag))
       if exTagVal != nil {
-        exTagBuf := bytes.NewBuffer(exTagVal)
-        tagDec := gob.NewDecoder(exTagBuf)
-        var exTag Tag
-        err = tagDec.Decode(&exTag)
-        exTag.NoteIds = append(exTag.NoteIds, id)
-        var tagBuf bytes.Buffer
-        tagEnc := gob.NewEncoder(&tagBuf)
-        err = tagEnc.Encode(exTag)
-        err = tagBucket.Put([]byte(tag),tagBuf.Bytes())
-        if err != nil {
-          return err
-        }
-        config.Log.Println("updated tag", exTag)
+        t := TagUpdate(exTagVal, note, tagBucket)
+        config.Log.Println("updated tag", t)
       } else {
-        var tagBuf bytes.Buffer
-        tagEnc := gob.NewEncoder(&tagBuf)
-        t := Tag{tag,[]uint64{id}}
-        err = tagEnc.Encode(t)
-        CheckErrFatal(err, "tag encode error:")
-        err = tagBucket.Put([]byte(tag), tagBuf.Bytes())
-        if err != nil {
-          return err
-        }
+        t := TagCreate(tag, note, tagBucket)
+        config.Log.Println("created tag", t)
       }
     }
     return nil

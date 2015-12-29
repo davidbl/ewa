@@ -3,7 +3,6 @@ package commands
 import (
   "github.com/spf13/cobra"
   "github.com/boltdb/bolt"
-  "encoding/gob"
   "bytes"
   "fmt"
 )
@@ -27,7 +26,7 @@ func findNotes(tags []string) {
 
   defer db.Close()
 
-  err = db.Update(func(tx *bolt.Tx) error {
+  err = db.View(func(tx *bolt.Tx) error {
     c := tx.Bucket(config.TagBucketName).Cursor()
 
     // find all the values (ids) from the given tags
@@ -35,25 +34,15 @@ func findNotes(tags []string) {
     for _, tag := range tags {
       prefix := []byte(tag)
       for k, v := c.Seek(prefix); bytes.HasPrefix(k, prefix); k,v = c.Next() {
-        exTagBuf := bytes.NewBuffer(v)
-        tagDec := gob.NewDecoder(exTagBuf)
-        var exTag Tag
-        err = tagDec.Decode(&exTag)
-        CheckErrFatal(err, "tag decode error:")
+        exTag := TagFromByte(v)
         for _,id := range exTag.NoteIds {
           idSet[id] = id
         }
       }
     }
-    noteCursor := tx.Bucket(config.NoteBucketName).Cursor()
     for k,_ := range idSet {
-      _, noteBytes := noteCursor.Seek(Itob(k))
-      noteBuf := bytes.NewBuffer(noteBytes)
-      noteDec := gob.NewDecoder(noteBuf)
-      var exNote Note
-      err = noteDec.Decode(&exNote)
-      CheckErrFatal(err, "note decode error:")
-      fmt.Printf("note: %s (on %s)\n", exNote.Note, exNote.Timestamp)
+      note := NoteById(k, tx)
+      fmt.Printf("note: %s (id: %d, on %s)\n", note.Note, note.Id, note.Timestamp)
     }
     return nil
   })
