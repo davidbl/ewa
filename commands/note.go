@@ -6,7 +6,6 @@ import (
   "strings"
   "bytes"
   "encoding/gob"
-  "encoding/binary"
   "time"
 )
 
@@ -28,12 +27,6 @@ type Tag struct {
   NoteIds []uint64
 }
 
-func itob(v uint64) []byte {
-  b := make([]byte, 8)
-  binary.BigEndian.PutUint64(b, v)
-  return b
-}
-
 var noteCmd = &cobra.Command{
   Use: "note",
   Short: "save a note",
@@ -42,10 +35,6 @@ var noteCmd = &cobra.Command{
     writeNote(strings.Join(args, " "))
   },
 }
-
-var tagBucketName = []byte("tags")
-var noteBucketName = []byte("notes")
-
 
 func writeNote(noteBody string) {
   db, err := bolt.Open(DataPath(), 0600, nil)
@@ -57,7 +46,7 @@ func writeNote(noteBody string) {
   noteEnc := gob.NewEncoder(&noteBuf)
 
   err = db.Update(func(tx *bolt.Tx) error {
-    bucket, err := tx.CreateBucketIfNotExists(noteBucketName)
+    bucket, err := tx.CreateBucketIfNotExists(config.NoteBucketName)
     if err != nil {
       return err
     }
@@ -67,14 +56,14 @@ func writeNote(noteBody string) {
     err = noteEnc.Encode(note)
     CheckErrFatal(err, "note encode error:")
 
-    err = bucket.Put(itob(id), noteBuf.Bytes())
+    err = bucket.Put(Itob(id), noteBuf.Bytes())
     if err != nil {
       return err
     }
     config.Log.Println("saving note:", note)
 
     // save the tags, if any
-    tagBucket, err := tx.CreateBucketIfNotExists(tagBucketName)
+    tagBucket, err := tx.CreateBucketIfNotExists(config.TagBucketName)
     if err != nil {
       return err
     }
@@ -106,7 +95,6 @@ func writeNote(noteBody string) {
         if err != nil {
           return err
         }
-        config.Log.Println("saving tag", tag)
       }
     }
     return nil

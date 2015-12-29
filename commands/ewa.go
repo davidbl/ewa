@@ -26,6 +26,8 @@ type Config struct {
   LogFile string
   LogDestination int
   Log *log.Logger
+  NoteBucketName []byte
+  TagBucketName []byte
 }
 
 var EwaCmd = &cobra.Command{
@@ -44,6 +46,9 @@ func DataPath() string {
 }
 
 func setConfig() {
+  config.TagBucketName = []byte("tags")
+  config.NoteBucketName = []byte("notes")
+
   if os.Getenv("EWA_LOGDESTINATION") != "" {
     switch os.Getenv("EWA_LOGDESTINATION") {
     case "0", "NONE": config.LogDestination = LogDestinationNone
