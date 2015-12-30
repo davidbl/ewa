@@ -7,6 +7,7 @@ import (
   "path"
   "log"
   "io"
+  "ewa/persistence"
 )
 
 const (
@@ -28,6 +29,7 @@ type Config struct {
   Log *log.Logger
   NoteBucketName []byte
   TagBucketName []byte
+  Store persistence.Persistor
 }
 
 var EwaCmd = &cobra.Command{
@@ -78,6 +80,7 @@ func setConfig() {
   if err != nil {
     config.Log.Fatal(err)
   }
+  config.Store =persistence.BoltDb{DataPath()}
 
   // logging
   if os.Getenv("EWA_LOGLOCATION") != "" {

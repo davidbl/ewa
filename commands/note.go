@@ -2,15 +2,14 @@ package commands
 
 import (
   "github.com/spf13/cobra"
-  "github.com/boltdb/bolt"
   "strings"
 )
 
-var tags string
+var tagFlag string
 
 func init() {
   EwaCmd.AddCommand(noteCmd)
-  noteCmd.Flags().StringVarP(&tags, "tags", "t", "", "comma-separated list of tags (no spaces)")
+  noteCmd.Flags().StringVarP(&tagFlag, "tags", "t", "", "comma-separated list of tags (no spaces)")
 }
 
 var noteCmd = &cobra.Command{
@@ -18,37 +17,30 @@ var noteCmd = &cobra.Command{
   Short: "save a note",
   Long: "save a note",
   Run:  func(cmd *cobra.Command, args []string) {
-    writeNote(strings.Join(args, " "))
+    note := writeNote(strings.Join(args, " "))
+    writeTags(tagFlag, note)
   },
 }
 
-func writeNote(noteBody string) {
-  db, err := bolt.Open(DataPath(), 0600, nil)
-  CheckErrFatal(err, "db file open err")
+func writeTags(tagString string, note Note) {
+  tagStrings := strings.Split(tagString, ",")
 
-  defer db.Close()
-
-  err = db.Update(func(tx *bolt.Tx) error {
-    note := NoteSave(noteBody, tx)
-    config.Log.Println("saving note:", note)
-
-    // save the tags, if any
-    tagBucket, err := tx.CreateBucketIfNotExists(config.TagBucketName)
-    if err != nil {
-      return err
+  var t Tag
+  for _, tag := range tagStrings {
+    tagBytes := config.Store.Find(config.TagBucketName, []byte(tag))
+    if len(tagBytes) > 0 {
+      t = TagFromByte(tagBytes)
+      t.NoteIds = append(t.NoteIds, note.Id)
+    } else {
+      t = BuildTag(tag,note.Id)
     }
-
-    tagStrings := strings.Split(tags,",")
-    for _, tag := range tagStrings {
-      exTagVal := tagBucket.Get([]byte(tag))
-      if exTagVal != nil {
-        t := TagUpdate(exTagVal, note, tagBucket)
-        config.Log.Println("updated tag", t)
-      } else {
-        t := TagCreate(tag, note, tagBucket)
-        config.Log.Println("created tag", t)
-      }
-    }
-    return nil
-  })
+    saved := config.Store.Save(t)
+    config.Log.Println("saving tag:",saved)
+  }
+}
+func writeNote(noteBody string) Note {
+  note := BuildNote(noteBody)
+  newNote := config.Store.Save(note).(Note)
+  config.Log.Println("saving note:", newNote)
+  return newNote
 }
