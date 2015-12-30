@@ -12,18 +12,15 @@ type BoltDb struct {
 func (db BoltDb) Find(bucketName []byte, key []byte) []byte {
   var copyBytes []byte
   myDb, err := bolt.Open(db.DataPath, 0600, nil)
-  if err != nil {
-    log.Fatal(err)
-  }
+  logFatal(err)
+
   defer myDb.Close()
   myDb.Update(func(tx *bolt.Tx) error {
-    if err != nil {
-      log.Fatal(err)
-    }
+    logFatal(err)
+
     bucket, err := tx.CreateBucketIfNotExists(bucketName)
-    if err != nil {
-      log.Fatal(err)
-    }
+    logFatal(err)
+
     someBytes := bucket.Get(key)
     l := len(someBytes)
     copyBytes = make([]byte,l, 2*l)
@@ -36,17 +33,14 @@ func (db BoltDb) Find(bucketName []byte, key []byte) []byte {
 
 func (db BoltDb) Save(v Saveable) Saveable {
   dataStore, err := bolt.Open(db.DataPath, 0600, nil)
-  if err != nil {
-    log.Fatal(err)
-  }
+  logFatal(err)
 
   defer dataStore.Close()
 
   err = dataStore.Update(func(tx *bolt.Tx) error {
     bucket, err := tx.CreateBucketIfNotExists([]byte(v.TableName()))
-    if err != nil {
-      log.Fatal(err)
-    }
+    logFatal(err)
+
     if !v.Persisted() {
       var id uint64
       id, _ = bucket.NextSequence()
@@ -54,10 +48,15 @@ func (db BoltDb) Save(v Saveable) Saveable {
     }
 
     err = bucket.Put(v.PrimaryKey(), v.Marshal())
-    if err != nil {
-      log.Fatal(err)
-    }
+    logFatal(err)
+
     return nil
   })
   return v
+}
+
+func logFatal(err error) {
+    if err != nil {
+      log.Fatal(err)
+    }
 }
