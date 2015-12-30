@@ -4,7 +4,6 @@ import (
   "github.com/spf13/cobra"
   "github.com/boltdb/bolt"
   "strings"
-  "time"
 )
 
 var tags string
@@ -12,17 +11,6 @@ var tags string
 func init() {
   EwaCmd.AddCommand(noteCmd)
   noteCmd.Flags().StringVarP(&tags, "tags", "t", "", "comma-separated list of tags (no spaces)")
-}
-
-type Note struct {
-  Id  uint64
-  Note string
-  Timestamp time.Time
-}
-
-type Tag struct {
-  TagText string
-  NoteIds []uint64
 }
 
 var noteCmd = &cobra.Command{

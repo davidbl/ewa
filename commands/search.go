@@ -42,7 +42,7 @@ func findNotes(tags []string) {
     }
     for k,_ := range idSet {
       note := NoteById(k, tx)
-      fmt.Printf("note: %s (id: %d, on %s)\n", note.Note, note.Id, note.Timestamp)
+      fmt.Printf("%v\n", note)
     }
     return nil
   })
