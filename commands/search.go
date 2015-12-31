@@ -25,7 +25,7 @@ func findNotes(tags []string) {
     for _, tag := range tags {
       tagBytes := config.Store.Find(config.TagBucketName, []byte(tag))
       if len(tagBytes) > 0 {
-        exTag := TagFromByte(tagBytes)
+        exTag := TagDemarshal(tagBytes)
         for _,id := range exTag.NoteIds {
           idSet[id] = id
         }
@@ -34,7 +34,7 @@ func findNotes(tags []string) {
     for k,_ := range idSet {
       noteBytes := config.Store.Find(config.NoteBucketName, Itob(k))
       if len(noteBytes) > 0 {
-        note := NoteFromByte(noteBytes)
+        note := NoteDemarshal(noteBytes)
         fmt.Printf("%v\n", note)
       }
     }

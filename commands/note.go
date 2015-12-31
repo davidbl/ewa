@@ -29,7 +29,7 @@ func writeTags(tagString string, note Note) {
   for _, tag := range tagStrings {
     tagBytes := config.Store.Find(config.TagBucketName, []byte(tag))
     if len(tagBytes) > 0 {
-      t = TagFromByte(tagBytes)
+      t = TagDemarshal(tagBytes)
       t.NoteIds = append(t.NoteIds, note.Id)
     } else {
       t = BuildTag(tag,note.Id)

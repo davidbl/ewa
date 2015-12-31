@@ -36,14 +36,18 @@ func (n Note) PrimaryKey() []byte {
   return Itob(n.Id)
 }
 func (n Note) Marshal() []byte {
-  return ToByte(n)
+  return toByte(n)
 }
 
 func (n Note) String() string {
   return fmt.Sprintf("note: %s\n{id: %d, created: %s}", n.Note, n.Id, n.Timestamp)
 }
 
-func NoteFromByte(noteBytes []byte) Note {
+func NoteDemarshal(noteBytes []byte) Note {
+  return noteFromByte(noteBytes)
+}
+
+func noteFromByte(noteBytes []byte) Note {
   var note Note
   err := decoder(noteBytes).Decode(&note)
   CheckErrFatal(err, "note decode error:")
@@ -78,11 +82,14 @@ func (t Tag) PrimaryKey() []byte {
   return []byte(t.TagText)
 }
 func (t Tag) Marshal() []byte {
-  return ToByte(t)
+  return toByte(t)
 }
 
+func TagDemarshal(tagBytes []byte) Tag {
+  return tagFromByte(tagBytes)
+}
 
-func TagFromByte(tagBytes []byte) Tag {
+func tagFromByte(tagBytes []byte) Tag {
   var tag Tag
   err := decoder(tagBytes).Decode(&tag)
   CheckErrFatal(err, "tag decode error:")
@@ -95,7 +102,7 @@ func decoder(b []byte) *gob.Decoder {
   return gob.NewDecoder(buf)
 }
 
-func ToByte(s persistence.Saveable) []byte {
+func toByte(s persistence.Saveable) []byte {
   var buf bytes.Buffer
   encoder := gob.NewEncoder(&buf)
   err := encoder.Encode(s)
