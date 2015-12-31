@@ -12,5 +12,6 @@ type Saveable interface {
 type Persistor interface {
   Save(v Saveable) Saveable
   Find(bucketName []byte, key []byte) []byte
+  Close() error
 }
 

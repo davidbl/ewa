@@ -40,11 +40,17 @@ during the day at the command-line`,
   PersistentPreRun: func(cmd *cobra.Command, args []string) {
     setConfig()
   },
-
+  PersistentPostRun: func(cmd *cobra.Command, args []string) {
+    shutDown()
+  },
 }
 
 func DataPath() string {
   return path.Join(config.DataDir, config.DataFile)
+}
+
+func shutDown() {
+  config.Store.Close()
 }
 
 func setConfig() {
@@ -80,7 +86,13 @@ func setConfig() {
   if err != nil {
     config.Log.Fatal(err)
   }
-  config.Store =persistence.BoltDb{DataPath()}
+
+  db, err := persistence.Initialize(DataPath())
+  if err != nil {
+    config.Log.Fatal(err)
+  }
+
+  config.Store = db
 
   // logging
   if os.Getenv("EWA_LOGLOCATION") != "" {

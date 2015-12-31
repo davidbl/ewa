@@ -7,17 +7,26 @@ import (
 
 type BoltDb struct {
   DataPath string
+  Db  *bolt.DB
+}
+
+func Initialize(n string) (*BoltDb, error) {
+  db, err := bolt.Open(n, 0600, nil)
+  if err != nil {
+    return nil, err
+  }
+  return &BoltDb{DataPath: n, Db: db }, err
+}
+
+func (db BoltDb) Close() error {
+  db.Db.Close()
+  return nil
 }
 
 func (db BoltDb) Find(bucketName []byte, key []byte) []byte {
   var copyBytes []byte
-  myDb, err := bolt.Open(db.DataPath, 0600, nil)
-  logFatal(err)
 
-  defer myDb.Close()
-  myDb.Update(func(tx *bolt.Tx) error {
-    logFatal(err)
-
+  db.Db.Update(func(tx *bolt.Tx) error {
     bucket, err := tx.CreateBucketIfNotExists(bucketName)
     logFatal(err)
 
@@ -32,12 +41,7 @@ func (db BoltDb) Find(bucketName []byte, key []byte) []byte {
 }
 
 func (db BoltDb) Save(v Saveable) Saveable {
-  dataStore, err := bolt.Open(db.DataPath, 0600, nil)
-  logFatal(err)
-
-  defer dataStore.Close()
-
-  err = dataStore.Update(func(tx *bolt.Tx) error {
+  db.Db.Update(func(tx *bolt.Tx) error {
     bucket, err := tx.CreateBucketIfNotExists([]byte(v.TableName()))
     logFatal(err)
 
