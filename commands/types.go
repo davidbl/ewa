@@ -15,7 +15,7 @@ type Note struct {
 }
 
 func BuildNote(body string) Note {
-  return Note{0, body, time.Now().UTC()}
+  return Note{Note: body, Timestamp: time.Now().UTC()}
 }
 
 // Saveable interface for Note
@@ -58,7 +58,7 @@ type Tag struct {
 }
 
 func BuildTag(tagText string, id uint64) Tag {
-  return Tag{0,tagText,[]uint64{id}}
+  return Tag{TagText: tagText, NoteIds: []uint64{id}}
 }
 // Saveable interface for Tag
 func (t Tag) TableName() string {
