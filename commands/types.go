@@ -45,10 +45,7 @@ func (n Note) String() string {
 
 func NoteFromByte(noteBytes []byte) Note {
   var note Note
-
-  noteBuf := bytes.NewBuffer(noteBytes)
-  noteDec := gob.NewDecoder(noteBuf)
-  err := noteDec.Decode(&note)
+  err := decoder(noteBytes).Decode(&note)
   CheckErrFatal(err, "note decode error:")
 
   return note
@@ -87,13 +84,15 @@ func (t Tag) Marshal() []byte {
 
 func TagFromByte(tagBytes []byte) Tag {
   var tag Tag
-
-  exTagBuf := bytes.NewBuffer(tagBytes)
-  tagDec := gob.NewDecoder(exTagBuf)
-  err := tagDec.Decode(&tag)
+  err := decoder(tagBytes).Decode(&tag)
   CheckErrFatal(err, "tag decode error:")
 
   return tag
+}
+
+func decoder(b []byte) *gob.Decoder {
+  buf := bytes.NewBuffer(b)
+  return gob.NewDecoder(buf)
 }
 
 func ToByte(s persistence.Saveable) []byte {
