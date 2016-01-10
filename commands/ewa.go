@@ -8,6 +8,7 @@ import (
   "log"
   "io"
   "ewa/persistence"
+  "ewa/envar"
 )
 
 const (
@@ -54,38 +55,15 @@ func shutDown() {
 }
 
 func setConfig() {
-  config.TagBucketName = []byte("tags")
-  config.NoteBucketName = []byte("notes")
-
-  if os.Getenv("EWA_LOGDESTINATION") != "" {
-    switch os.Getenv("EWA_LOGDESTINATION") {
-    case "0", "NONE": config.LogDestination = LogDestinationNone
-    case "1", "STDOUT": config.LogDestination = LogDestinationStdOut
-    case "2", "FILE": config.LogDestination = LogDestinationFile
-    case "3", "BOTH": config.LogDestination = LogDestinationBoth
-    }
-  } else {
-    config.LogDestination = LogDestinationFile
-  }
   // set log to stdout during initialization of config - this will be changed later
   config.Log = log.New(os.Stdout, "config: ", log.Lshortfile|log.Ldate|log.Ltime)
 
-  config.DataFile = "ewa.db"
-  if os.Getenv("EWA_DATADIR") != "" {
-    config.DataDir = os.Getenv("EWA_DATADIR")
-  } else {
-    usr, err := user.Current()
-    CheckErrFatal(err, "unable to get current user")
-    config.DataDir = usr.HomeDir
-  }
-  _, err := os.Stat(config.DataDir)
-  if os.IsNotExist(err) {
-    config.Log.Println("Creating missing data directory", config.DataDir)
-    err = os.MkdirAll(config.DataDir, 0755)
-  }
-  if err != nil {
-    config.Log.Fatal(err)
-  }
+  config.DataDir = envar.StringFunc("EWA_DATADIR", setDataDir, "tmp")
+  config.DataFile = envar.String("EWA_DATAFILE", "ewa.db")
+  config.TagBucketName = envar.ByteSlice("EWA_TAGBUCKETNAME", "tags")
+  config.NoteBucketName = envar.ByteSlice("EWA_NOTEBUCKETNAME", "notes")
+  config.LogDestination = envar.IntFunc("EWA_LOGDESTINATION", pickLogDestination, LogDestinationFile)
+  config.LogFile = envar.String("EWA_LOGLOCATION", path.Join(config.DataDir,"ewa.log"))
 
   db, err := persistence.Initialize(DataPath())
   if err != nil {
@@ -95,11 +73,6 @@ func setConfig() {
   config.Store = db
 
   // logging
-  if os.Getenv("EWA_LOGLOCATION") != "" {
-    config.LogFile = os.Getenv("EWA_LOGLOCATION")
-  } else {
-    config.LogFile = path.Join(config.DataDir,"ewa.log")
-  }
   var multi io.Writer
   switch config.LogDestination {
   case LogDestinationNone: multi = io.MultiWriter()
@@ -117,4 +90,37 @@ func openLogFile() *os.File {
       config.Log.Fatal("Failed to open log file", config.LogFile, ":", err)
     }
   return file
+}
+
+func pickLogDestination(v string, defaultV int) int {
+  switch v {
+  default: return defaultV
+  case "0", "NONE": return LogDestinationNone
+  case "1", "STDOUT": return LogDestinationStdOut
+  case "2", "FILE": return LogDestinationFile
+  case "3", "BOTH": return LogDestinationBoth
+  }
+}
+
+func setDataDir(v string, defaultV string) string {
+  var val string
+  if v != "" {
+    val = v
+  } else {
+    usr, err := user.Current()
+    if err != nil {
+      config.Log.Println("unable to get current user home dir,  using default")
+      val = defaultV
+    } else {
+      val = usr.HomeDir
+    }
+  }
+ // create the dir, if needed
+ _, err := os.Stat(val)
+ if os.IsNotExist(err) {
+    config.Log.Println("Creating missing data directory", val)
+    err = os.MkdirAll(val, 0755)
+ }
+ CheckErrFatal(err, "unable to create DataDir")
+ return val
 }
