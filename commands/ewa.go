@@ -12,10 +12,10 @@ import (
 )
 
 const (
-  LogDestinationNone = 0
-  LogDestinationStdOut = 1
-  LogDestinationFile = 2
-  LogDestinationBoth = 3
+  LogDestinationNone = "NONE"
+  LogDestinationStdOut = "STDOUT"
+  LogDestinationFile = "FILE"
+  LogDestinationBoth = "BOTH"
 )
 
 var (
@@ -26,7 +26,7 @@ type Config struct {
   DataDir string
   DataFile string
   LogFile string
-  LogDestination int
+  LogDestination string
   Log *log.Logger
   NoteBucketName []byte
   TagBucketName []byte
@@ -54,16 +54,20 @@ func shutDown() {
   config.Store.Close()
 }
 
-func setConfig() {
-  // set log to stdout during initialization of config - this will be changed later
-  config.Log = log.New(os.Stdout, "config: ", log.Lshortfile|log.Ldate|log.Ltime)
-
+func setEnv() {
   config.DataDir = envar.StringFunc("EWA_DATADIR", setDataDir, "tmp")
   config.DataFile = envar.String("EWA_DATAFILE", "ewa.db")
   config.TagBucketName = envar.ByteSlice("EWA_TAGBUCKETNAME", "tags")
   config.NoteBucketName = envar.ByteSlice("EWA_NOTEBUCKETNAME", "notes")
-  config.LogDestination = envar.IntFunc("EWA_LOGDESTINATION", pickLogDestination, LogDestinationFile)
+  config.LogDestination = envar.StringFunc("EWA_LOGDESTINATION", pickLogDestination, LogDestinationFile)
   config.LogFile = envar.String("EWA_LOGLOCATION", path.Join(config.DataDir,"ewa.log"))
+}
+
+func setConfig() {
+  // set log to stdout during initialization of config - this will be changed later
+  config.Log = log.New(os.Stdout, "config: ", log.Lshortfile|log.Ldate|log.Ltime)
+
+  setEnv()
 
   db, err := persistence.Initialize(DataPath())
   if err != nil {
@@ -92,13 +96,13 @@ func openLogFile() *os.File {
   return file
 }
 
-func pickLogDestination(v string, defaultV int) int {
+func pickLogDestination(v string, defaultV string) string {
   switch v {
   default: return defaultV
-  case "0", "NONE": return LogDestinationNone
-  case "1", "STDOUT": return LogDestinationStdOut
-  case "2", "FILE": return LogDestinationFile
-  case "3", "BOTH": return LogDestinationBoth
+  case "0", LogDestinationNone: return LogDestinationNone
+  case "1", LogDestinationStdOut: return LogDestinationStdOut
+  case "2", LogDestinationFile: return LogDestinationFile
+  case "3", LogDestinationBoth: return LogDestinationBoth
   }
 }
 
