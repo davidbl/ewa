@@ -15,7 +15,7 @@ const (
   LogDestinationNone = "NONE"
   LogDestinationStdOut = "STDOUT"
   LogDestinationFile = "FILE"
-  LogDestinationBoth = "BOTH"
+  LogDestinationBoth = "FILE_AND_STDOUT"
 )
 
 var (
@@ -55,12 +55,20 @@ func shutDown() {
 }
 
 func setEnv() {
-  config.DataDir = envar.StringFunc("EWA_DATADIR", setDataDir, "tmp")
-  config.DataFile = envar.String("EWA_DATAFILE", "ewa.db")
-  config.TagBucketName = envar.ByteSlice("EWA_TAGBUCKETNAME", "tags")
-  config.NoteBucketName = envar.ByteSlice("EWA_NOTEBUCKETNAME", "notes")
-  config.LogDestination = envar.StringFunc("EWA_LOGDESTINATION", pickLogDestination, LogDestinationFile)
-  config.LogFile = envar.String("EWA_LOGLOCATION", path.Join(config.DataDir,"ewa.log"))
+  envar.Add("EWA_DATADIR", "tmp", "Directory where data files are stored", setDataDir)
+  envar.Add("EWA_DATAFILE", "ewa.db", "Name of data file", nil)
+  envar.Add("EWA_TAGBUCKETNAME", "tags", "Bucket Name for tags", nil)
+  envar.Add("EWA_NOTEBUCKETNAME", "notes", "Bucket Name for notes", nil)
+  envar.Add("EWA_LOGDESTINATION", LogDestinationFile, "Destination of log output", pickLogDestination)
+  envar.Add("EWA_LOGLOCATION", "./ewa.log", "Name of log file", nil)
+
+
+  config.DataDir = envar.Get("EWA_DATADIR")
+  config.DataFile = envar.Get("EWA_DATAFILE")
+  config.TagBucketName = []byte(envar.Get("EWA_TAGBUCKETNAME"))
+  config.NoteBucketName = []byte(envar.Get("EWA_NOTEBUCKETNAME"))
+  config.LogDestination = envar.Get("EWA_LOGDESTINATION")
+  config.LogFile = envar.Get("EWA_LOGLOCATION")
 }
 
 func setConfig() {
@@ -102,7 +110,7 @@ func pickLogDestination(v string, defaultV string) string {
   case "0", LogDestinationNone: return LogDestinationNone
   case "1", LogDestinationStdOut: return LogDestinationStdOut
   case "2", LogDestinationFile: return LogDestinationFile
-  case "3", LogDestinationBoth: return LogDestinationBoth
+  case "3", "BOTH", LogDestinationBoth: return LogDestinationBoth
   }
 }
 
